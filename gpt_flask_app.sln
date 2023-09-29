@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33627.172
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "gpt_flask_app", "gpt_flask_app.pyproj", "{1C8D4B54-85CC-4E2D-A2BB-87F6E04B197F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1C8D4B54-85CC-4E2D-A2BB-87F6E04B197F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C8D4B54-85CC-4E2D-A2BB-87F6E04B197F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {68156EDB-CCB7-4DD1-9EBA-09AD35029BDA}
+	EndGlobalSection
+EndGlobal

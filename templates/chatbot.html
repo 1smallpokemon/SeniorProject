@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot</title>
+    <style>
+        .sidebar {
+            width: 20%;
+            float: left;
+            background-color: #f0f0f0;
+            height: 100vh;
+            padding: 10px;
+        }
+        .chat-window {
+            width: 60%;
+            float: left;
+            height: 100vh;
+            padding: 10px;
+        }
+        .file-list {
+            width: 20%;
+            float: left;
+            background-color: #f0f0f0;
+            height: 100vh;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Chats</h2>
+        {% for chat_id in chat_ids %}
+        <a href="{{ url_for('chatbot', chat_id=chat_id) }}">Chat {{ chat_id }}</a><br>
+        {% endfor %}
+        <a href="{{ url_for('new_chat') }}">New Chat</a>
+    </div>
+    <div class="chat-window">
+        <form method="POST">
+            <label for="query">Query:</label><br>
+            <input type="text" id="query" name="query"><br>
+            <input type="submit" value="Ask">
+        </form>
+        <p>{{ chat.text | safe }}</p>
+    </div>
+    <div class="file-list">
+        <h2>Uploaded Files</h2>
+        {% for file in files %}
+        <p>{{ file }}</p>
+        {% endfor %}
+    </div>
+</body>
+</html>

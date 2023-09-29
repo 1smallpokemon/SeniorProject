@@ -1,0 +1,6 @@
+requests>=2.20
+tqdm
+
+[dev]
+black==20.8b1
+pytest==6.*
