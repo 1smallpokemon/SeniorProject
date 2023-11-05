@@ -1,0 +1,28 @@
+import os
+import sys
+from setuptools import setup, find_packages
+
+with open(os.path.join(os.path.dirname(__file__), "{{name}}", "__version__.py")) as version_file:
+    exec(version_file.read()) # pylint: disable=W0122
+
+_INSTALL_REQUIERS = []
+
+setup(name="{{name}}",
+      classifiers = [
+          {%- for supported_version in supported_versions %}
+          "Programming Language :: Python :: {{supported_version}}",
+          {%- endfor %}
+          ],
+      description="{{description}}",
+      license="{{license_name}}",
+      author="{{author_fullname}}",
+      author_email="{{author_email}}",
+      version=__version__, # pylint: disable=E0602
+      packages=find_packages(exclude=["tests"]),
+{% if url %}
+      url="{{url}}",
+{% endif %}
+      install_requires=_INSTALL_REQUIERS,
+      scripts=[],
+      namespace_packages=[]
+      )

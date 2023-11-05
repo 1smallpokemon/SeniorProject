@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: pyproject
+Version: 1.3.1
+Summary: Tool for creating new python packages
+Author: Rotem Yaari
+Author-email: vmalloc@gmail.com
+License: BSD
+Classifier: Programming Language :: Python :: 2.7
+Requires-Dist: Jinja2
+
