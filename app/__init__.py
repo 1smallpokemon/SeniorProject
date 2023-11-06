@@ -3,8 +3,6 @@ from .models import db, migrate
 from .auth.routes import auth_bp
 from .main.routes import main_bp
 
-
-
 def create_app():
     app = Flask(__name__)
     app.config.from_object('config.Config')
