@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ChatGPT Retrieval Plugin
 
 Build Custom GPTs with a Retrieval Plugin backend to give ChatGPT access to personal documents.
@@ -631,3 +632,7 @@ We would like to extend our gratitude to the following contributors for their co
   - [mmmaia](https://github.com/mmmaia)
 - [Elasticsearch](https://www.elastic.co/)
   - [joemcelroy](https://github.com/joemcelroy)
+=======
+# SeniorProject
+Joe's Senior Project, its a GPT3.5 knowledge extender. Kinda like the Google NotebookLM. Nice 😎
+>>>>>>> new-origin/main
