@@ -1,14 +1,16 @@
 from typing import List
-import openai
+from openai import OpenAI
+
+client = OpenAI()
 import os
 from loguru import logger
 
-from tenacity import retry, wait_random_exponential, stop_after_attempt
+from tenacity import retry, wait_exponential, stop_after_attempt
 
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-large")
 
 
-@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
+@retry(wait=wait_exponential(multiplier = 2,min=20, max=20000), stop=stop_after_attempt(2000))
 def get_embeddings(texts: List[str]) -> List[List[float]]:
     """
     Embed texts using OpenAI's ada model.
@@ -28,18 +30,18 @@ def get_embeddings(texts: List[str]) -> List[List[float]]:
 
     response = {}
     if deployment is None:
-        response = openai.Embedding.create(input=texts, model=EMBEDDING_MODEL)
+        response = client.embeddings.create(input=texts, model=EMBEDDING_MODEL)
     else:
-        response = openai.Embedding.create(input=texts, deployment_id=deployment)
+        response = client.embeddings.create(input=texts, deployment_id=deployment)
 
     # Extract the embedding data from the response
-    data = response["data"]  # type: ignore
+    data = response.data  # type: ignore
 
     # Return the embeddings as a list of lists of floats
     return [result["embedding"] for result in data]
 
 
-@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
+@retry(wait=wait_exponential(multiplier = 2,min=20, max=20000), stop=stop_after_attempt(2000))
 def get_chat_completion(
     messages,
     model="gpt-3.5-turbo",  # use "gpt-4" for better results
@@ -62,17 +64,13 @@ def get_chat_completion(
     # Note: Azure Open AI requires deployment id
     response = {}
     if deployment_id == None:
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=messages,
-        )
+        response = client.chat.completions.create(model=model,
+        messages=messages)
     else:
-        response = openai.ChatCompletion.create(
-            deployment_id=deployment_id,
-            messages=messages,
-        )
+        response = client.chat.completions.create(deployment_id=deployment_id,
+        messages=messages)
 
-    choices = response["choices"]  # type: ignore
+    choices = response.choices  # type: ignore
     completion = choices[0].message.content.strip()
     logger.info(f"Completion: {completion}")
     return completion

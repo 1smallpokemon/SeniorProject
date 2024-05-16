@@ -6,6 +6,9 @@ import os
 from loguru import logger
 
 
+
+from tenacity import retry, wait_exponential, stop_after_attempt
+@retry(wait=wait_exponential(multiplier = 2,min=20, max=20000), stop=stop_after_attempt(2000))
 def extract_metadata_from_document(text: str) -> Dict[str, str]:
     sources = Source.__members__.keys()
     sources_string = ", ".join(sources)

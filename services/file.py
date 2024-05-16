@@ -6,7 +6,7 @@ import mimetypes
 from PyPDF2 import PdfReader
 import docx2txt
 import csv
-import pptx
+# import pptx
 from loguru import logger
 
 from models.models import Document, DocumentMetadata
@@ -66,20 +66,20 @@ def extract_text_from_file(file: BufferedReader, mimetype: str) -> str:
         reader = csv.reader(decoded_buffer)
         for row in reader:
             extracted_text += " ".join(row) + "\n"
-    elif (
-        mimetype
-        == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    ):
-        # Extract text from pptx using python-pptx
-        extracted_text = ""
-        presentation = pptx.Presentation(file)
-        for slide in presentation.slides:
-            for shape in slide.shapes:
-                if shape.has_text_frame:
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            extracted_text += run.text + " "
-                    extracted_text += "\n"
+    # elif (
+    #     mimetype
+    #     == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    # ):
+    #     # Extract text from pptx using python-pptx
+    #     extracted_text = ""
+    #     presentation = pptx.Presentation(file)
+    #     for slide in presentation.slides:
+    #         for shape in slide.shapes:
+    #             if shape.has_text_frame:
+    #                 for paragraph in shape.text_frame.paragraphs:
+    #                     for run in paragraph.runs:
+    #                         extracted_text += run.text + " "
+    #                 extracted_text += "\n"
     else:
         # Unsupported file type
         raise ValueError("Unsupported file type: {}".format(mimetype))

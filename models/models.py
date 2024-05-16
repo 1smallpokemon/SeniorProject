@@ -16,6 +16,14 @@ class DocumentMetadata(BaseModel):
     created_at: Optional[str] = None
     author: Optional[str] = None
 
+    def to_json(self):
+        # Using Pydantic's json method to handle serialization
+        return self.json()
+
+    def to_dict(self):
+        # Custom method to serialize the instance to a dictionary
+        return self.dict()
+
 
 class DocumentChunkMetadata(DocumentMetadata):
     document_id: Optional[str] = None

@@ -23,19 +23,19 @@ class DataStore(ABC):
         First deletes all the existing vectors with the document id (if necessary, depends on the vector db), then inserts the new ones.
         Return a list of document ids.
         """
-        # Delete any existing vectors for documents with the input document ids
-        await asyncio.gather(
-            *[
-                self.delete(
-                    filter=DocumentMetadataFilter(
-                        document_id=document.id,
-                    ),
-                    delete_all=False,
-                )
-                for document in documents
-                if document.id
-            ]
-        )
+        # # Delete any existing vectors for documents with the input document ids
+        # await asyncio.gather(
+        #     *[
+        #         self.delete(
+        #             filter=DocumentMetadataFilter(
+        #                 document_id=document.id,
+        #             ),
+        #             delete_all=False,
+        #         )
+        #         for document in documents
+        #         if document.id
+        #     ]
+        # )
 
         chunks = get_document_chunks(documents, chunk_token_size)
 

@@ -10,10 +10,10 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://your-app-url.com/.well-known/openapi.yaml",
+    "url": "https://chatgpt-retrieval-plugin-xswjhthjzq-uc.a.run.app.com/.well-known/openapi.yaml",
     "has_user_authentication": false
   },
-  "logo_url": "https://your-app-url.com/.well-known/logo.png",
+  "logo_url": "https://chatgpt-retrieval-plugin-xswjhthjzq-uc.a.run.app/.well-known/logo.png",
   "contact_email": "hello@contact.com", 
-  "legal_info_url": "http://example.com/legal-info"
+  "legal_info_url": "http://chatgpt-retrieval-plugin-xswjhthjzq-uc.a.run.app/legal-info"
 }
