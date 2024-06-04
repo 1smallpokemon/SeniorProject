@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 import asyncio
+from loguru import logger
 
 from models.models import (
     Document,
@@ -10,7 +11,7 @@ from models.models import (
     QueryResult,
     QueryWithEmbedding,
 )
-from services.chunks import get_document_chunks
+from services.chunks import get_document_chunks_async
 from services.openai import get_embeddings
 
 
@@ -37,7 +38,7 @@ class DataStore(ABC):
         #     ]
         # )
 
-        chunks = get_document_chunks(documents, chunk_token_size)
+        chunks = await get_document_chunks_async(documents, chunk_token_size)
 
         return await self._upsert(chunks)
 
@@ -56,12 +57,13 @@ class DataStore(ABC):
         """
         # get a list of of just the queries from the Query list
         query_texts = [query.query for query in queries]
-        query_embeddings = get_embeddings(query_texts)
-        # hydrate the queries with embeddings
+        query_embeddings = await get_embeddings(query_texts)
         queries_with_embeddings = [
             QueryWithEmbedding(**query.dict(), embedding=embedding)
             for query, embedding in zip(queries, query_embeddings)
         ]
+
+        logger.debug(f"Queries with embeddings: {queries_with_embeddings}")
         return await self._query(queries_with_embeddings)
 
     @abstractmethod

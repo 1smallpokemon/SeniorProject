@@ -10,6 +10,7 @@ class Source(str, Enum):
 
 
 class DocumentMetadata(BaseModel):
+    document_id: Optional[str] = None
     source: Optional[Source] = None
     source_id: Optional[str] = None
     url: Optional[str] = None

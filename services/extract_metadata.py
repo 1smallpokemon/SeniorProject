@@ -4,15 +4,12 @@ import json
 from typing import Dict
 import os
 from loguru import logger
-
-
-
 from tenacity import retry, wait_exponential, stop_after_attempt
-@retry(wait=wait_exponential(multiplier = 2,min=20, max=20000), stop=stop_after_attempt(2000))
-def extract_metadata_from_document(text: str) -> Dict[str, str]:
+
+
+async def extract_metadata_from_document(text: str) -> Dict[str, str]:
     sources = Source.__members__.keys()
     sources_string = ", ".join(sources)
-    # This prompt is just an example, change it to fit your use case
     messages = [
         {
             "role": "system",
@@ -29,14 +26,7 @@ def extract_metadata_from_document(text: str) -> Dict[str, str]:
         {"role": "user", "content": text},
     ]
 
-    # NOTE: Azure Open AI requires deployment id
-    # Read environment variable - if not set - not used
-    completion = get_chat_completion(
-        messages,
-        "gpt-4",
-        # os.environ.get("OPENAI_METADATA_EXTRACTIONMODEL_DEPLOYMENTID")
-    )  # TODO: change to your preferred model name
-
+    completion = await get_chat_completion(messages, "gpt-4")
     logger.info(f"completion: {completion}")
 
     try:

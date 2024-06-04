@@ -1,9 +1,7 @@
 import os
 from services.openai import get_chat_completion
 
-
-def screen_text_for_pii(text: str) -> bool:
-    # This prompt is just an example, change it to fit your use case
+async def screen_text_for_pii(text: str) -> bool:
     messages = [
         {
             "role": "system",
@@ -21,11 +19,6 @@ def screen_text_for_pii(text: str) -> bool:
         {"role": "user", "content": text},
     ]
 
-    completion = get_chat_completion(
-        messages, deployment_id=os.environ.get("OPENAI_COMPLETIONMODEL_DEPLOYMENTID")
-    )
+    completion = await get_chat_completion(messages, deployment_id=os.environ.get("OPENAI_COMPLETIONMODEL_DEPLOYMENTID"))
 
-    if completion.startswith("True"):
-        return True
-
-    return False
+    return completion.startswith("True")

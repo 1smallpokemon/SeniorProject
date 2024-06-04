@@ -63,7 +63,6 @@ class PineconeDataStore(DataStore):
                 raise e
 
 
-    @retry(wait=wait_exponential(multiplier = 2,min=20, max=20000), stop=stop_after_attempt(2000))
     async def _upsert(self, chunks: Dict[str, List[DocumentChunk]]) -> List[str]:
         doc_ids: List[str] = []
         vectors = []
@@ -89,11 +88,11 @@ class PineconeDataStore(DataStore):
 
         return doc_ids
 
-    @retry(wait=wait_exponential(multiplier = 2,min=20, max=20000), stop=stop_after_attempt(2000))
     async def _query(self, queries: List[QueryWithEmbedding]) -> List[QueryResult]:
         async def single_query(query: QueryWithEmbedding) -> QueryResult:
             logger.debug(f"Query: {query.query}")
             pinecone_filter = self.get_pinecone_filter(query.filter)
+            logger.info(f"Pinecone filter: {pinecone_filter}")
 
             try:
                 query_response = self.index.query(
@@ -102,16 +101,14 @@ class PineconeDataStore(DataStore):
                     filter=pinecone_filter,
                     include_metadata=True
                 )
+                logger.debug(f"Query response: {query_response}")
             except Exception as e:
                 logger.error(f"Error querying index: {e}")
-                raise e
+                raise e 
 
             query_results = []
             for result in query_response.matches:
                 metadata_without_text = {k: v for k, v in result.metadata.items() if k != "text"} if result.metadata else None
-                if metadata_without_text and "source" in metadata_without_text and metadata_without_text["source"] not in Source.__members__:
-                    metadata_without_text["source"] = None
-
                 query_results.append(DocumentChunkWithScore(
                     id=result.id,
                     score=result.score,
@@ -119,13 +116,15 @@ class PineconeDataStore(DataStore):
                     metadata=metadata_without_text
                 ))
 
+            logger.info(f"Query results: {query_results}")
             return QueryResult(query=query.query, results=query_results)
-
+        
+        logger.debug(f"Starting _query with queries: {queries}")
         results = await asyncio.gather(*[single_query(query) for query in queries])
+        logger.info(f"Results: {results}")
         return results
 
 
-    @retry(wait=wait_exponential(multiplier = 2,min=20, max=20000), stop=stop_after_attempt(2000))
     async def delete(
         self,
         ids: Optional[List[str]] = None,
@@ -165,7 +164,7 @@ class PineconeDataStore(DataStore):
                     operator = "$gte" if field == "start_date" else "$lte"
                     pinecone_filter["created_at"] = {operator: to_unix_timestamp(value)}
                 else:
-                    pinecone_filter[field] = {"$eq": value}
+                    pinecone_filter[field] = value  # Relaxed filtering without strict constraints
 
         return pinecone_filter
 

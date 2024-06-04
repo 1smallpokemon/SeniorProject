@@ -2,26 +2,102 @@ from typing import Dict, List, Optional, Tuple
 import uuid
 import os
 from models.models import Document, DocumentChunk, DocumentChunkMetadata
-
+import time
+from loguru import logger
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import tiktoken
 
-from services.openai import get_embeddings
+from services.openai import get_embeddings, is_retriable_exception
+from functools import lru_cache
+import asyncio
+from functools import wraps
 
+def log_execution_time(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        logger.info(f"Execution time for {func.__name__}: {end_time - start_time} seconds")
+        return result
+    return wrapper
+
+async def retry_with_backoff(func, *args, max_retries=3, initial_wait=1, max_wait=30, **kwargs):
+    """Retry function with exponential backoff."""
+    retries = 0
+    wait = initial_wait
+    while retries < max_retries:
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            if not is_retriable_exception(e):
+                raise
+            retries += 1
+            await asyncio.sleep(wait)
+            wait = min(wait * 2, max_wait)
+            logger.warning(f"Retrying {func.__name__} due to {e} ({retries}/{max_retries})")
+    raise Exception(f"Exceeded maximum retries for {func.__name__}")
+
+@lru_cache(maxsize=100)
+def cached_tokenizer(text: str) -> List[int]:
+    return tokenizer.encode(text, disallowed_special=())
 # Global variables
+# --------------------------------------
+
 tokenizer = tiktoken.get_encoding(
     "cl100k_base"
 )  # The encoding scheme to use for tokenization
 
 # Constants
-CHUNK_SIZE = 200  # The target size of each text chunk in tokens
-MIN_CHUNK_SIZE_CHARS = 350  # The minimum size of each text chunk in characters
+CHUNK_SIZE = 50  # The target size of each text chunk in tokens
+MIN_CHUNK_SIZE_CHARS = 50  # The minimum size of each text chunk in characters
 MIN_CHUNK_LENGTH_TO_EMBED = 5  # Discard chunks shorter than this
 EMBEDDINGS_BATCH_SIZE = int(
-    os.environ.get("OPENAI_EMBEDDING_BATCH_SIZE", 128)
+    os.environ.get("OPENAI_EMBEDDING_BATCH_SIZE", 3)
 )  # The number of embeddings to request at a time
 MAX_NUM_CHUNKS = 10000  # The maximum number of chunks to generate from a text
 
 
+
+def parallel_get_text_chunks(documents: List[Document], chunk_token_size: Optional[int]) -> Dict[str, List[DocumentChunk]]:
+    """
+    Split a list of documents into chunks of ~CHUNK_SIZE tokens, based on punctuation and newline boundaries.
+
+    Args:
+        documents: The list of documents to split into chunks.
+        chunk_token_size: The target size of each chunk in tokens, or None to use the default CHUNK_SIZE.
+
+    Returns:
+        A dictionary mapping each document id to a list of text chunks, each of which is a string of ~CHUNK_SIZE tokens.
+    """
+    # Check if the document text is empty or whitespace
+    if not documents:
+        return {}
+
+    # Get the number of available CPU cores
+    num_cpus = multiprocessing.cpu_count()
+
+    # Create a ProcessPoolExecutor with the number of available CPU cores
+    with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+        # Submit a task to create document chunks for each document
+        futures = {executor.submit(create_document_chunks, doc, chunk_token_size): doc.id for doc in documents}
+
+        # Collect the results of the tasks
+        chunks = {}
+        for future in as_completed(futures):
+            doc_id = futures[future]
+            try:
+                doc_chunks, _ = future.result()
+                chunks[doc_id] = doc_chunks
+            except Exception as exc:
+                logger.error(f"Document id {doc_id} generated an exception: {exc}")
+
+    # Return the dictionary of document chunks
+    return chunks
+
+
+@log_execution_time
 def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
     """
     Split a text into chunks of ~CHUNK_SIZE tokens, based on punctuation and newline boundaries.
@@ -38,7 +114,7 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
         return []
 
     # Tokenize the text
-    tokens = tokenizer.encode(text, disallowed_special=())
+    tokens = cached_tokenizer(text)
 
     # Initialize an empty list of chunks
     chunks = []
@@ -85,7 +161,7 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
             chunks.append(chunk_text_to_append)
 
         # Remove the tokens corresponding to the chunk text from the remaining tokens
-        tokens = tokens[len(tokenizer.encode(chunk_text, disallowed_special=())) :]
+        tokens = tokens[len(cached_tokenizer(chunk_text)) :]
 
         # Increment the number of chunks
         num_chunks += 1
@@ -98,7 +174,44 @@ def get_text_chunks(text: str, chunk_token_size: Optional[int]) -> List[str]:
 
     return chunks
 
+def parallel_create_document_chunks(documents: List[Document], chunk_token_size: Optional[int]) -> Dict[str, List[DocumentChunk]]:
+    """
+    Create a list of document chunks from a list of document objects and return a dictionary mapping document ids to lists of document chunks.
 
+    Args:
+        documents: The list of document objects to create chunks from. Each document object should have a text attribute and optionally an id and a metadata attribute.
+        chunk_token_size: The target size of each chunk in tokens, or None to use the default CHUNK_SIZE.
+
+    Returns:
+        A dictionary mapping each document id to a list of document chunks, each of which is a DocumentChunk object with an id, a document_id, a text, and a metadata attribute.
+        The id of each chunk is generated from the document id and a sequential number, and the metadata is copied from the document object.
+    """
+    # Check if the document text is empty or whitespace
+    if not documents:
+        return {}
+
+    # Get the number of available CPU cores
+    num_cpus = multiprocessing.cpu_count()
+
+    # Create a ProcessPoolExecutor with the number of available CPU cores
+    with ProcessPoolExecutor(max_workers=num_cpus) as executor:
+        # Submit a task to create document chunks for each document
+        futures = {executor.submit(create_document_chunks, doc, chunk_token_size): doc.id for doc in documents}
+
+        # Collect the results of the tasks
+        chunks = {}
+        for future in as_completed(futures):
+            doc_id = futures[future]
+            try:
+                doc_chunks, _ = future.result()
+                chunks[doc_id] = doc_chunks
+            except Exception as exc:
+                logger.error(f"Document id {doc_id} generated an exception: {exc}")
+
+    # Return the dictionary of document chunks
+    return chunks
+
+@log_execution_time
 def create_document_chunks(
     doc: Document, chunk_token_size: Optional[int]
 ) -> Tuple[List[DocumentChunk], str]:
@@ -148,8 +261,28 @@ def create_document_chunks(
     # Return the list of chunks and the document id
     return doc_chunks, doc_id
 
+async def get_document_chunks_async(documents: List[Document], chunk_token_size: Optional[int]) -> Dict[str, List[DocumentChunk]]:
+    loop = asyncio.get_event_loop()
+    chunks = await loop.run_in_executor(None, parallel_create_document_chunks, documents, chunk_token_size)
+    
+    all_chunks = [chunk for doc_chunks in chunks.values() for chunk in doc_chunks]
 
-def get_document_chunks(
+    if not all_chunks:
+        return {}
+
+    embeddings = []
+    for i in range(0, len(all_chunks), EMBEDDINGS_BATCH_SIZE):
+        batch_texts = [chunk.text for chunk in all_chunks[i: i + EMBEDDINGS_BATCH_SIZE]]
+        batch_embeddings = await get_embeddings(batch_texts)
+        embeddings.extend(batch_embeddings)
+
+    for i, chunk in enumerate(all_chunks):
+        chunk.embedding = embeddings[i]
+
+    return chunks
+
+@log_execution_time
+async def get_document_chunks(
     documents: List[Document], chunk_token_size: Optional[int]
 ) -> Dict[str, List[DocumentChunk]]:
     """
@@ -163,43 +296,5 @@ def get_document_chunks(
         A dictionary mapping each document id to a list of document chunks, each of which is a DocumentChunk object
         with text, metadata, and embedding attributes.
     """
-    # Initialize an empty dictionary of lists of chunks
-    chunks: Dict[str, List[DocumentChunk]] = {}
-
-    # Initialize an empty list of all chunks
-    all_chunks: List[DocumentChunk] = []
-
-    # Loop over each document and create chunks
-    for doc in documents:
-        doc_chunks, doc_id = create_document_chunks(doc, chunk_token_size)
-
-        # Append the chunks for this document to the list of all chunks
-        all_chunks.extend(doc_chunks)
-
-        # Add the list of chunks for this document to the dictionary with the document id as the key
-        chunks[doc_id] = doc_chunks
-
-    # Check if there are no chunks
-    if not all_chunks:
-        return {}
-
-    # Get all the embeddings for the document chunks in batches, using get_embeddings
-    embeddings: List[List[float]] = []
-    for i in range(0, len(all_chunks), EMBEDDINGS_BATCH_SIZE):
-        # Get the text of the chunks in the current batch
-        batch_texts = [
-            chunk.text for chunk in all_chunks[i : i + EMBEDDINGS_BATCH_SIZE]
-        ]
-
-        # Get the embeddings for the batch texts
-        batch_embeddings = get_embeddings(batch_texts)
-
-        # Append the batch embeddings to the embeddings list
-        embeddings.extend(batch_embeddings)
-
-    # Update the document chunk objects with the embeddings
-    for i, chunk in enumerate(all_chunks):
-        # Assign the embedding from the embeddings list to the chunk object
-        chunk.embedding = embeddings[i]
-
+    chunks = await get_document_chunks_async(documents, chunk_token_size)
     return chunks

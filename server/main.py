@@ -9,7 +9,6 @@ from fastapi import FastAPI, File, Form, HTTPException, Depends, Body, UploadFil
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
-
 from models.api import (
     DeleteRequest,
     DeleteResponse,
@@ -44,14 +43,14 @@ sub_app = FastAPI(
     description="A retrieval API for querying and filtering documents based on natural language queries and metadata",
     version="1.0.0",
     servers=[{"url": "https://chatgpt-retrieval-plugin-xswjhthjzq-uc.a.run.app"}],
-    dependencies=[Depends(validate_token)],
+    dependencies=[Depends(validate_token)]
 )
 app.mount("/sub", sub_app)
 
 
 @app.post(
     "/upsert-file",
-    response_model=UpsertResponse,
+    response_model=UpsertResponse
 )
 async def upsert_file(
     file: UploadFile = File(...),
@@ -78,7 +77,7 @@ async def upsert_file(
 
 @app.post(
     "/upsert",
-    response_model=UpsertResponse,
+    response_model=UpsertResponse
 )
 async def upsert_main(
     request: UpsertRequest = Body(...),
@@ -96,7 +95,7 @@ async def upsert_main(
     "/upsert",
     response_model=UpsertResponse,
     # NOTE: We are describing the shape of the API endpoint input due to a current limitation in parsing arrays of objects from OpenAPI schemas. This will not be necessary in the future.
-    description="Save chat information. Accepts an array of documents with text (potential questions + conversation text), metadata (source 'chat' and timestamp, no ID as this will be generated). Confirm with the user before saving, ask for more details/context.",
+    description="Save chat information. Accepts an array of documents with text (potential questions + conversation text), metadata (source 'chat' and timestamp, no ID as this will be generated). Confirm with the user before saving, ask for more details/context."
 )
 async def upsert(
     request: UpsertRequest = Body(...),
@@ -112,7 +111,7 @@ async def upsert(
 
 @app.post(
     "/query",
-    response_model=QueryResponse,
+    response_model=QueryResponse
 )
 async def query_main(
     request: QueryRequest = Body(...),
@@ -132,7 +131,7 @@ async def query_main(
     "/query",
     response_model=QueryResponse,
     # NOTE: We are describing the shape of the API endpoint input due to a current limitation in parsing arrays of objects from OpenAPI schemas. This will not be necessary in the future.
-    description="Accepts search query objects array each with query and optional filter. Break down complex questions into sub-questions. Refine results by criteria, e.g. time / source, don't do this often. Split queries if ResponseTooLargeError occurs.",
+    description="Accepts search query objects array each with query and optional filter. Break down complex questions into sub-questions. Refine results by criteria, e.g. time / source, don't do this often. Split queries if ResponseTooLargeError occurs."
 )
 async def query(
     request: QueryRequest = Body(...),
@@ -145,12 +144,12 @@ async def query(
         return QueryResponse(results=results)
     except Exception as e:
         logger.error(e)
-        # raise HTTPException(status_code=500, detail="Internal Service Error")
+        raise HTTPException(status_code=500, detail="Internal Service Error")
 
 
 @app.delete(
     "/delete",
-    response_model=DeleteResponse,
+    response_model=DeleteResponse
 )
 async def delete(
     request: DeleteRequest = Body(...),
@@ -180,4 +179,5 @@ async def startup():
 
 
 def start():
-    uvicorn.run("server.main:app", host="0.0.0.0", port=8000, reload=True)
+    import uvicorn
+    uvicorn.run("server.main:app", host="0.0.0.0", port=8080, reload=True)
